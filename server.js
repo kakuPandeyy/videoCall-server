@@ -26,11 +26,11 @@ function validation(arr,user) {
   });
 
     const res = [...mySet]
-    console.log(res)
+    // console.log(res)
 
     const exist = res.includes(user)
 
-    console.log("exzi",exist,user)
+    // console.log("exzi",exist,user)
 
   if(res.length<2 && !exist ){
      return true
@@ -41,6 +41,16 @@ function validation(arr,user) {
 
 }
 
+
+function formateMap(userMap) {
+  const formatted = Array.from(userMap, ([username, roomId]) => ({
+  username,
+  roomId
+  }))
+
+  return formatted
+
+}
 // function vaidUserName (username){
 //  const exist = userMap.has(username)
 //  return !exist
@@ -78,48 +88,76 @@ function validation(arr,user) {
 // }
 
 
+
+
+
 io.on("connection",socket=>{
 
-  console.log("connecting to ",socket.id)
+  // console.log("connecting to ",socket.id)
+
+     
+
+      socket.on("request-Offers",()=>{
+       socket.emit("updated-offer",formateMap(offerMap))
+      })
   
   socket.on("join-room",({roomId,username})=>{
 
     console.log("working join room")
+
+
   
     socket.data.roomId = roomId
     socket.data.username = username
   
   
-     console.log("inti",rooms)
+     
 
     if (rooms.has(roomId)) {
     let socketArry = rooms.get(roomId) 
-   
+
+
+       
+      //  socketArry.push({socketId:socket.id,username:username}) 
+      // offerMap.delete(username)
+      //     io.emit("updated-offer",formateMap(offerMap))
   
     if (validation(socketArry,username)) {
+     
       socketArry.push({socketId:socket.id,username:username}) 
+      offerMap.delete(username)
+       offerMap.delete(socketArry[0].username)
+    
+       io.emit("updated-offer",formateMap(offerMap))
     }else{
       socket.emit("room-full")
+      offerMap.set(username,roomId)
       return
     }
     }else{
-      console.log("elsee",roomId)
+    
+      offerMap.set(username,roomId)
     rooms.set(roomId,[{socketId:socket.id,username:username}])
+     
+         io.emit("updated-offer",formateMap(offerMap))
 
     }
  
   
      
     const hostUser = rooms.get(roomId).find(ele =>ele.socketId !==socket.id)
-    // console.log("117",hostUser)
+ 
     if (hostUser) {
       socket.emit("host-user",hostUser.socketId)
       socket.to(hostUser.socketId).emit("joined-user",socket.id)
     }
 
-    console.log(rooms)
+   
 
   })
+
+
+
   
   socket.on("offer",payload =>{
 
@@ -133,12 +171,42 @@ io.on("connection",socket=>{
     io.to(incoming.target).emit("ice-candidate",incoming.candidate)
   })
 
+  socket.on("failed-connection",async()=>{
+
+    try{
+ const { roomId } = socket.data || {};
+
+ 
+    const otherPerson = rooms.get(roomId)?.find(ele =>ele.socketId !==socket.id)
+ 
+    socket.to(otherPerson.socketId).emit("failed-connection")
+
+    }catch(e){
+
+  console.log("erro",e)
+    }   
+
+  })
+  
+  socket.on("end-call",()=>{
+
+        const { roomId, username } = socket.data || {};
+    
+    rooms.delete(roomId)
+    offerMap.delete(username)
+ io.emit("updated-offer",formateMap(offerMap))
+
+  })
+
    socket.on("disconnect", () => {
 
     const { roomId, username } = socket.data || {};
-    console.log("disconneted",socket.id)
-    console.log(rooms,socket.id,roomId,username)
+    
+    
     rooms.delete(roomId)
+    offerMap.delete(username)
+ io.emit("updated-offer",formateMap(offerMap))
+
 
   });
 })
