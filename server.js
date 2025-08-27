@@ -9,7 +9,7 @@ const server = http.createServer(app)
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173", // React frontend URL
+    origin: process.env.CLIENT_URL, // React frontend URL
     methods: ["GET", "POST"]
   }
 })
@@ -103,7 +103,7 @@ io.on("connection",socket=>{
   
   socket.on("join-room",({roomId,username})=>{
 
-    console.log("working join room")
+    // console.log("working join room")
 
 
   
