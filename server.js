@@ -1,11 +1,18 @@
 const http = require('http')
 const express = require('express')
 const {Server } = require('socket.io')
-const { error } = require('console')
+
+const twilio = require("twilio");
+const cors = require("cors");
 require('dotenv').config()
 
 const app = express()
 const server = http.createServer(app)
+
+
+app.use(cors({
+  origin: process.env.CLIENT_URL
+}));
 
 const io = new Server(server, {
   cors: {
@@ -13,6 +20,25 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 })
+
+
+const accountSid = process.env.YOUR_ACCOUNT_SID
+const authToken = process.env.YOUR_AUTH_TOKEN
+const client = twilio(accountSid, authToken);
+
+app.get("/ice-token", async (req, res) => {
+  try {
+
+    const token = await client.tokens.create(); 
+
+     res.json(token.iceServers)
+  } catch (err) {
+    res.status(500).send(err);
+  }
+});
+
+
+
 
 
 const rooms =  new Map()
@@ -210,6 +236,9 @@ io.on("connection",socket=>{
 
   });
 })
+
+
+
 
  
 server.listen(process.env.PORT,()=>{
